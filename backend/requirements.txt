@@ -1,0 +1,17 @@
+django
+djangorestframework
+django-cors-headers
+langchain
+langgraph
+langchain-community
+langchain-chroma
+langchain-huggingface
+pandas
+numpy
+pysqlite3
+pypdf
+chromadb
+sentence-transformers
+transformers
+accelerate
+torch
