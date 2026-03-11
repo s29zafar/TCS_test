@@ -18,9 +18,15 @@ if sys.platform.startswith('darwin'):
         pass
 
 # Paths
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "TestTCS.db")
-CHROMA_PATH = os.path.join(os.path.dirname(BASE_DIR), "chroma_db")
+# Check if running inside Docker (where /data is mounted) or locally
+if os.path.exists("/data/TestTCS.db"):
+    ROOT_DIR = "/data"
+else:
+    # Local fallback
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+DB_PATH = os.path.join(ROOT_DIR, "TestTCS.db")
+CHROMA_PATH = os.path.join(ROOT_DIR, "chroma_db")
 
 # Global variables for lazy loading
 _graph = None
@@ -33,7 +39,8 @@ def get_user_ticker(user_id: str):
     query = f"SELECT * FROM ticket_history WHERE user_id = '{user_id}'"
     result_df = pd.read_sql_query(query, conn)
     conn.close()
-    return result_df.to_string()
+    # Aggressive truncation for GPT-2
+    return result_df.to_string()[:200]
 
 @tool
 def get_user_info(user_id: str):
@@ -42,7 +49,8 @@ def get_user_info(user_id: str):
     query = f"SELECT * FROM Customers WHERE user_id = '{user_id}'"
     result_df = pd.read_sql_query(query, conn)
     conn.close()
-    return result_df.to_string()
+    # Aggressive truncation for GPT-2
+    return result_df.to_string()[:200]
 
 @tool
 def search_bank_policy(query: str) -> str:
@@ -59,7 +67,8 @@ def search_bank_policy(query: str) -> str:
         collection_name="CS_policies"
     )
     docs = vector_db.similarity_search(query, k=1)
-    return docs[0].page_content if docs else "No relevant policy found."
+    # Aggressive truncation for GPT-2
+    return docs[0].page_content[:200] if docs else "No relevant policy found."
 
 # State & Graph
 class State(TypedDict):
@@ -98,7 +107,8 @@ Thought: {agent_scratchpad}"""
     Policy_executor = AgentExecutor(
         agent=create_react_agent(llm, [search_bank_policy], prompt),
         tools=[search_bank_policy],
-        handle_parsing_errors=True
+        handle_parsing_errors=True,
+        max_iterations=2
     )
     
     result = Policy_executor.invoke({"input": user_msg})
@@ -135,7 +145,8 @@ Thought: {agent_scratchpad}"""
     CS_executor = AgentExecutor(
         agent=create_react_agent(llm, [get_user_ticker, get_user_info], prompt),
         tools=[get_user_ticker, get_user_info],
-        handle_parsing_errors=True
+        handle_parsing_errors=True,
+        max_iterations=2
     )
     
     result = CS_executor.invoke({"input": user_msg})

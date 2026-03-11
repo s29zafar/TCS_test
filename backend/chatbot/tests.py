@@ -40,3 +40,40 @@ class ChatbotTests(TestCase):
         
         self.assertEqual(user_msg.text, 'Hi there')
         self.assertEqual(bot_msg.text, response.data['response'])
+
+    def test_supervisor_node_routing(self):
+        """Directly test the supervisor routing logic."""
+        from .graph import supervisor_node
+        from langgraph.graph import END
+        
+        # Case 1: Start of conversation
+        state = {"messages": [], "completed_stages": [], "current_stage": ""}
+        result = supervisor_node(state)
+        self.assertEqual(result.goto, "Policy Check")
+        self.assertEqual(result.update["current_stage"], "Policy Check")
+
+        # Case 2: Policy Check completed
+        state = {"messages": [], "completed_stages": ["Policy Check"], "current_stage": "Policy Check"}
+        result = supervisor_node(state)
+        self.assertEqual(result.goto, "Customer Information Check")
+        self.assertEqual(result.update["current_stage"], "Customer Information Check")
+
+        # Case 3: All stages completed
+        state = {"messages": [], "completed_stages": ["Policy Check", "Customer Information Check"], "current_stage": "Customer Information Check"}
+        result = supervisor_node(state)
+        self.assertEqual(result.goto, END)
+
+    def test_graph_message_flow(self):
+        """Verify the graph receives messages correctly."""
+        from .graph import get_graph
+        from langchain_core.messages import HumanMessage
+        
+        graph = get_graph()
+        # We can test the graph's initial state processing
+        inputs = {"messages": [HumanMessage(content="Test message")]}
+        # We can't easily test the full invoke without hitting the LLM, 
+        # but we can check if the graph is built correctly
+        self.assertIsNotNone(graph)
+        self.assertIn("Policy Check", graph.nodes)
+        self.assertIn("Customer Information Check", graph.nodes)
+        self.assertIn("supervisor", graph.nodes)
