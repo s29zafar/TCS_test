@@ -66,8 +66,8 @@ function App() {
                                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                             </div>
                             <div className={`p-4 rounded-2xl shadow-lg ${msg.role === 'user'
-                                    ? 'bg-blue-700 text-white rounded-tr-none'
-                                    : 'bg-slate-800 border border-slate-700 rounded-tl-none'
+                                ? 'bg-blue-700 text-white rounded-tr-none'
+                                : 'bg-slate-800 border border-slate-700 rounded-tl-none'
                                 }`}>
                                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                             </div>
