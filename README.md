@@ -1,85 +1,74 @@
 # TCS Support Orchestration System
 
-This project implements an automated customer support orchestration system using **LangGraph** and **LangChain**. It leverages a multi-agent "Orchestration-Worker" model to handle support tickets by combining bank policy document retrieval with live customer transaction history.
+This project implements a full-stack automated customer support orchestration system using **LangGraph**, **Django**, and **React**. It leverages a multi-agent "Orchestration-Worker" model to handle support tickets by combining bank policy document retrieval with live customer transaction history.
 
-## 🏗️ Architecture: Orchestration-Worker Model
+## 🏗️ Architecture
 
-The system follows a modular architecture where a central **Supervisor** orchestrates specialized **Worker Agents**.
+The system consists of a modular backend and a modern frontend, orchestrated via Docker.
 
-### 1. The Orchestrator (Supervisor)
-The `supervisor_node` acts as the brain of the operation. In this implementation, it follows a robust rule-based logic to ensure a high-quality response:
-- **Decision Logic**: It ensures that a support ticket is first validated against the **Bank Policy** before moving to **Customer Information** analysis.
-- **State Management**: It maintains a shared `State` object that tracks messages, current stage, and completed stages, ensuring no duplicate work and a coherent final response.
+### 1. The Orchestrator (Backend)
+- **Framework**: Django REST Framework + LangGraph.
+- **Supervisor**: A rule-based orchestrator that ensures support tickets are validated against **Bank Policy** before analyzing **Customer Information**.
+- **Specialized Workers**:
+    - **Policy Expert**: RAG-based search through `Customer-Service-Policy.pdf` using ChromaDB.
+    - **CS Representative**: SQL-based analysis of customer profile and ticket history.
+- **Persistence**: Django models (`Conversation`, `Message`) store every interaction, accessible via the Django Admin panel.
 
-### 2. The Workers (Specialized Agents)
-Each agent is a specialized "Worker" node inside the LangGraph. They are implemented as ReAct agents that can think, act (call tools), and observe.
+### 2. The Interface (Frontend)
+- **Framework**: React + Vite + Tailwind CSS.
+- **Features**: Real-time chat interface, message history, and responsive design.
 
-- **Policy Expert (`Policy Check`)**:
-  - **Tool**: `search_bank_policy` (RAG-based search through `Customer-Service-Policy.pdf`).
-  - **Goal**: Identify violations or compliance with internal banking regulations.
-- **CS Representative (`Customer Information Check`)**:
-  - **Tools**: `get_user_info`, `get_user_ticker`.
-  - **Goal**: Analyze the customer's profile and past support history to provide context.
-
-### 3. Data Flow Diagram
+### 3. Data Flow
 ```mermaid
 graph TD
-    START((START)) --> Supervisor[Supervisor Orchestrator]
-    Supervisor -->|Rules/Decision| PolicyAgent[Policy Worker Agent]
-    PolicyAgent -->|Tool Call| RAG[(ChromaDB: Policy PDF)]
-    PolicyAgent -->|Result| Supervisor
-    Supervisor -->|Rules/Decision| CSAgent[CS Worker Agent]
-    CSAgent -->|Tool Call| DB[(SQL: Customer Data)]
-    CSAgent -->|Result| Supervisor
-    Supervisor -->|All Done| END((END))
+    User((User)) -->|Message| Frontend[React App]
+    Frontend -->|API Call| Backend[Django API]
+    Backend -->|Invoke| supervisor_node[Supervisor Orchestrator]
+    supervisor_node -->|Rules| PolicyAgent[Policy Worker]
+    PolicyAgent -->|Tool| Chroma[(ChromaDB)]
+    supervisor_node -->|Rules| CSAgent[CS Worker]
+    CSAgent -->|Tool| SQLite[(SQLite3: Customer Data)]
+    Backend -->|Save| History[(Postgres/SQLite: Chat History)]
+    Backend -->|Response| Frontend
 ```
 
 ---
 
-## 🚀 Project Setup
+## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.12 (Recommended)
-- Virtual Environment support
+- Docker & Docker Compose
 
-### Installation
+### Quick Start
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/s29zafar/TCS_test.git
    cd TCS_test
    ```
 
-2. **Setup Dependencies**:
-   Run the following block inside your development environment to ensure all core libraries and classic compatibility layers are installed:
+2. **Run with Docker**:
    ```bash
-   pip install langgraph langchain langchain-core langchain-community langchain-chroma langchain-huggingface transformers accelerate torch chromadb faker kagglehub pandas numpy pydantic typing-extensions pysqlite3 langchain-classic
+   docker-compose up --build
    ```
-
-### Data Preparation
-The system automatically handles:
-- **SQLite Initialization**: Creates `TestTCS.db` and populates it with synthetic customer data.
-- **Vector DB Construction**: Ingests `Customer-Service-Policy.pdf` into a local ChromaDB instance at `./chroma_db`.
-
----
-
-## 📖 Usage Instructions
-
-1. **Open the Notebook**: Launch `TCS_test.ipynb` in your preferred Jupyter environment.
-2. **Environment Configuration**: 
-   - Ensure you have the `Customer-Service-Policy.pdf` in the root directory.
-   - Run the initial environment check cells to confirm all modules load correctly.
-3. **Execution**:
-   - Run the **"Consolidated Imports"** cell.
-   - Run the **"Setup the Model"** cell (downloads Qwen-0.6B).
-   - Execute the **"Orchestrator"** cell to build the graph.
-   - Run the final **"Graph Execution"** cell to process a test ticket.
+   - **Frontend**: [http://localhost:5173](http://localhost:5173)
+   - **Backend API**: [http://localhost:8000/api/](http://localhost:8000/api/)
+   - **Admin Panel**: [http://localhost:8000/admin/](http://localhost:8000/admin/)
 
 ---
 
 ## 🛠️ Tech Stack
-- **Framework**: LangGraph, LangChain
-- **Model**: Qwen 0.6B (HuggingFace)
+- **AI/LLM**: LangGraph, LangChain, HuggingFace (GPT-2 for demo)
+- **Backend**: Django, Django REST Framework
+- **Frontend**: React, Tailwind CSS, Lucide React
 - **Vector Search**: ChromaDB
 - **Embeddings**: HuggingFace `all-MiniLM-L6-v2`
-- **Database**: SQLite3
-- **Data Generation**: Faker, KaggleHub
+- **Database**: SQLite3 (Customer Data & Chat History)
+- **Deployment**: Docker, Docker Compose
+
+---
+
+## 🧪 Testing
+Run backend tests to verify API and model persistence:
+```bash
+docker-compose exec backend python manage.py test chatbot
+```
